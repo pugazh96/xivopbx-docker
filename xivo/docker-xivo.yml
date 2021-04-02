@@ -1,0 +1,156 @@
+version: "3.7"
+
+services:
+  db:
+    image: "xivoxc/xivo-db:${XIVOCC_TAG}.${XIVOCC_DIST}"
+
+    ports:
+    - 5432:5432
+
+    environment:
+    - POSTGRES_PASSWORD=proformatique
+    - IS_MDS
+
+    volumes:
+    - /etc/timezone:/etc/timezone:ro
+    - /etc/localtime:/etc/localtime:ro
+    - /etc/passwd:/etc/passwd:ro
+    - /etc/group:/etc/group:ro
+    - /var/log/postgresql:/var/log/postgresql
+    - /var/lib/postgresql/11:/var/lib/postgresql/11
+    - /run/postgresql:/run/postgresql
+
+    restart: always
+
+  rabbitmq:
+    user: "${RABBITMQ_UID}"
+
+    image: "xivoxc/rabbitmq:${XIVOCC_TAG}.${XIVOCC_DIST}"
+
+    network_mode: "host"
+
+    environment:
+    - RABBITMQ_CONFIG_FILE=/etc/rabbitmq/xivo/rabbitmq
+
+    volumes:
+    - /var/log/rabbitmq/:/var/log/rabbitmq/
+    - /etc/timezone:/etc/timezone:ro
+    - /etc/localtime:/etc/localtime:ro
+
+    restart: always
+
+  config_mgt:
+    image: "xivoxc/config-mgt:${XIVOCC_TAG}.${XIVOCC_DIST}"
+
+    ports:
+    - 9100:9000
+
+    environment:
+    - JAVA_OPTS=-Xms64m -Xmx128m
+    - XIVO_HOST
+    - DB_HOST
+    - XIVO_CONFD_AUTH_TOKEN
+    - APPLICATION_SECRET
+    - QUEUEDISSUASION_DEFAULT_QUEUE
+
+    volumes:
+    - /etc/timezone:/etc/timezone:ro
+    - /etc/localtime:/etc/localtime:ro
+    - /var/log/xivo-configmgt:/opt/docker/var/log/config-mgt
+    - /var/lib/xivo/sounds/playback:/var/lib/xivo/sounds/playback:ro
+
+    restart: always
+
+  outcall:
+    image: "xivoxc/xivo-outcall:${XIVOCC_TAG}.${XIVOCC_DIST}"
+
+    environment:
+    - JAVA_OPTS=-Xms64m -Xmx128m
+    - XIVO_HOST
+    - ARI_USERNAME
+    - ARI_PASSWORD
+
+    volumes:
+    - /etc/timezone:/etc/timezone:ro
+    - /etc/localtime:/etc/localtime:ro
+    - /var/log/xivo-outcall:/var/log/xivo-outcall
+
+    restart: always
+
+  nginx:
+    image: "xivoxc/xivo-nginx:${XIVOCC_TAG}.${XIVOCC_DIST}"
+
+    network_mode: "host"
+
+    extra_hosts:
+    - xivohost:${XIVO_HOST}
+
+    volumes:
+    - /usr/share/xivo/:/usr/share/xivo/
+    - /usr/share/xivo-certs/server.crt:/usr/share/xivo-certs/server.crt
+    - /usr/share/xivo-certs/server.key:/usr/share/xivo-certs/server.key
+    - /var/backups/xivo/:/var/backups/xivo/
+    - /var/log/nginx:/var/log/nginx
+    - webivol:/usr/share/xivo-web-interface
+    - /var/www/munin/localdomain/localhost.localdomain:/var/www/munin/localdomain/localhost.localdomain
+
+
+    restart: always
+
+  webi:
+    image: "xivoxc/xivo-webi:${XIVOCC_TAG}.${XIVOCC_DIST}"
+
+    environment:
+    - XIVO_UUID=${XIVO_UUID}
+
+    network_mode: "host"
+
+    volumes:
+    - /etc/asterisk/extensions_extra.d/:/etc/asterisk/extensions_extra.d/
+    - /etc/passwd:/etc/passwd:ro
+    - /etc/group:/etc/group:ro
+    - /etc/xivo/datastorage.conf:/etc/xivo/datastorage.conf
+    - /etc/xivo/provider-configuration/:/etc/xivo/provider-configuration/
+    - /usr/share/xivo/:/usr/share/xivo/
+    - /var/backups/xivo/:/var/backups/xivo/
+    - /var/log/asterisk/:/var/log/asterisk/
+    - /var/log/xivo-web-interface/:/var/log/xivo-web-interface/
+    - /var/lib/asterisk/moh/:/var/lib/asterisk/moh/
+    - /var/lib/asterisk/sounds/:/var/lib/asterisk/sounds/
+    - /var/lib/xivo/moh/:/var/lib/xivo/moh
+    - /var/lib/xivo/sounds/:/var/lib/xivo/sounds/
+    - /var/spool/asterisk/fax/:/var/spool/asterisk/fax/
+    - /var/spool/asterisk/monitor/:/var/spool/asterisk/monitor/
+    - webivol:/usr/share/xivo-web-interface
+    - /var/www/munin/localdomain/localhost.localdomain:/var/www/munin/localdomain/localhost.localdomain
+
+
+    restart: always
+
+  switchboard_reports:
+    image: "xivoxc/xivo-switchboard-reports:${XIVOCC_TAG}.${XIVOCC_DIST}"
+
+    ports:
+      - "127.0.0.1:9510:9510"
+
+    environment:
+      - JAVA_OPTS=-Xms64m -Xmx128m
+      - REPORTING_DB_HOST
+      - REPORTING_DATABASE_NAME
+
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /var/log/xivo-switchboard-reports:/var/log/xivo-switchboard-reports
+
+    restart: always
+
+networks:
+  default:
+    ipam:
+      driver: default
+      config:
+      - subnet: ${DOCKER_NET}
+
+volumes:
+  webivol:
