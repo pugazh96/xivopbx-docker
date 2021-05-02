@@ -1,0 +1,31 @@
+ logstash:
+    image: docker.elastic.co/logstash/logstash:7.12.0
+    user: root
+
+#    links:
+#    - elasticsearch
+
+    ports:
+    - "5044:5044"
+    - "9200:9200"
+
+#    environment:
+#    - "LS_JAVA_OPTS=-Xms256m -Xmx768m"
+#    - "http.host=0.0.0.0"
+#    - "xpack.monitoring.enabled=true"
+#    - "xpack.monitoring.elasticsearch.hosts=http://192.168.56.102:9200"
+
+    volumes:
+    - /etc/timezone:/etc/timezone:ro
+    - /etc/localtime:/etc/localtime:ro
+    - ~/etc/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:rw
+    - ~/etc/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:rw
+#    - ~/etc/logstash/jvm.options:/usr/share/logstash/config/jvm.options:rw
+    - ~/etc/logstash/config/pipelines.yml:/usr/share/logstash/config/pipelines.yml
+#    - ~/etc/logstash/log4j2.properties:/usr/share/logstash/config/log4j2.properties
+#    - ~/etc/logstash/startup.options:/usr/share/logstash/config/startup.options
+    - /var/log/asterisk/full:/var/log/asterisk/full:ro
+
+    command: "logstash -f /usr/share/logstash/pipeline/logstash.conf"
+
+    restart: always
